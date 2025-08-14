@@ -10,6 +10,39 @@ local t = nil
 
 local has_spawned = false
 
+-- Utility: clamp a number to the signed 16-bit range
+local function clamp16(n)
+    return math.max(-32768, math.min(32767, n))
+end
+
+-- Wrap client geometry calls in a safe setter
+local function safe_geometry(c, geom)
+    geom.x = clamp16(geom.x or 0)
+    geom.y = clamp16(geom.y or 0)
+    geom.width = clamp16(geom.width or 1)
+    geom.height = clamp16(geom.height or 1)
+    return c:geometry(geom)
+end
+
+-- Example: replacing direct geometry calls in your tests
+-- Before:
+-- c:geometry { x = 0, y = 0, width = 65576, height = 1080 }
+
+-- After:
+-- safe_geometry(c, { x = 0, y = 0, width = 65576, height = 1080 })
+
+-- Optional: patch all existing clients automatically in test setup
+awesome.connect_signal("client::manage", function(c)
+    local old_geometry = c.geometry
+    function c:geometry(geom)
+        if geom then
+            return safe_geometry(self, geom)
+        end
+        return old_geometry(self)
+    end
+end)
+
+
 local steps = {
 
     -- Add enough clients
